@@ -4,7 +4,12 @@ import re
 import altair as alt
 import pandas as pd
 import streamlit as st
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, TfidfVectorizer
+
+try:
+    from wordcloud import WordCloud
+except ImportError:  # The app can still run if the optional visualization dependency is absent.
+    WordCloud = None
 
 # The project root is two folders above this file:
 # project_root/apps/customer_feedback/app.py
@@ -47,14 +52,30 @@ TOPIC_KEYWORDS = {
     ],
 }
 
-STOP_WORDS = {
-    "the", "and", "for", "that", "this", "with", "was", "were", "have",
-    "had", "very", "from", "you", "your", "they", "their", "there",
-    "about", "but", "our", "are", "not", "too", "all", "just", "its",
-    "has", "will", "would", "can", "could", "been", "really", "some",
-    "more", "than", "what", "when", "then", "them", "she", "his", "her",
-    "out", "into", "also", "only", "one", "get", "got", "much", "very",
+# Use the standard English stop-word list plus generic filler that repeatedly
+# appeared in this review dataset. Preserve negation terms (e.g. "not" and
+# "never") because they can change the meaning of sentiment phrases.
+_NEGATION_TERMS = {"not", "no", "nor", "never"}
+STOP_WORDS = (set(ENGLISH_STOP_WORDS) - _NEGATION_TERMS) | {
+    "slightly", "really", "quite", "mostly", "fairly", "little",
+    "bit", "much", "many", "everything", "something", "anything",
+    "nothing", "overall", "felt", "seemed", "found", "said",
+    "got", "getting", "still", "also", "one", "two", "well",
+    "just", "like",
 }
+
+# These terms may still be useful inside a multi-word phrase (e.g. "customer
+# service"), so remove them from TF-IDF results only when they appear as a
+# standalone keyword. This preserves useful phrases while hiding generic tokens.
+GENERIC_SINGLE_WORD_KEYWORDS = {
+    "experience", "experiences", "customer", "customers",
+    "thing", "things", "overall", "everything", "something",
+    "anything", "nothing",
+}
+
+# Word clouds show individual words rather than TF-IDF phrases, so suppress the
+# generic tokens entirely. Standalone negation words also clutter a word cloud.
+WORDCLOUD_STOP_WORDS = STOP_WORDS | _NEGATION_TERMS | GENERIC_SINGLE_WORD_KEYWORDS
 
 st.set_page_config(
     page_title="Customer Feedback Sentiment Explorer",
@@ -217,11 +238,43 @@ def top_keywords(texts: pd.Series, n: int = 10) -> pd.DataFrame:
     try:
         matrix = vectorizer.fit_transform(cleaned)
     except ValueError:
+        # This can happen if the available text contains only stop words.
         return empty
     scores = matrix.mean(axis=0).A1
     terms = vectorizer.get_feature_names_out()
     result = pd.DataFrame({"Keyword": terms, "TFIDF": scores})
+    result = result.loc[
+        ~result["Keyword"].isin(GENERIC_SINGLE_WORD_KEYWORDS)
+    ]
     return result.sort_values("TFIDF", ascending=False).head(n).reset_index(drop=True)
+
+
+def make_wordcloud(texts: pd.Series, colormap: str):
+    """Build a word-cloud image using the same stop words as TF-IDF."""
+    if WordCloud is None:
+        return None
+
+    cleaned_texts = texts.fillna("").astype(str).map(clean_for_tfidf)
+    combined_text = " ".join(text for text in cleaned_texts if text.strip())
+    if not combined_text.strip():
+        return None
+
+    try:
+        cloud = WordCloud(
+            width=1200,
+            height=650,
+            background_color="white",
+            stopwords=WORDCLOUD_STOP_WORDS,
+            collocations=False,
+            max_words=100,
+            colormap=colormap,
+            random_state=42,
+            prefer_horizontal=0.9,
+            margin=8,
+        ).generate(combined_text)
+    except ValueError:
+        return None
+    return cloud.to_image()
 
 
 def assign_topic(text: str) -> str:
@@ -245,14 +298,22 @@ def horizontal_keyword_chart(keyword_df: pd.DataFrame, sentiment: str) -> alt.Ch
                 "Keyword:N",
                 sort=alt.SortField(field="TFIDF", order="descending"),
                 title=None,
-                axis=alt.Axis(labelLimit=220),
+                axis=alt.Axis(
+                    labelLimit=500,
+                    labelOverlap=False,
+                    labelPadding=8,
+                    minExtent=165,
+                ),
             ),
             tooltip=[
                 alt.Tooltip("Keyword:N", title="Keyword"),
                 alt.Tooltip("TFIDF:Q", title="Mean TF-IDF weight", format=".4f"),
             ],
         )
-        .properties(height=max(220, 26 * len(keyword_df)))
+        .properties(
+            height=max(320, 36 * len(keyword_df)),
+            padding={"left": 8, "right": 12, "top": 8, "bottom": 8},
+        )
     )
 
 
@@ -419,6 +480,39 @@ with drivers_tab:
             st.altair_chart(horizontal_keyword_chart(neg_keywords, "Negative"), use_container_width=True)
         else:
             st.info("No usable negative-review keywords were found.")
+
+    st.subheader("Positive and Negative Word Clouds")
+    st.caption(
+        "Word size reflects how often a term appears in each sentiment group after stop-word filtering. "
+        "These clouds are exploratory summaries; inspect reviews in context before drawing conclusions."
+    )
+    if WordCloud is None:
+        st.warning(
+            "Word clouds are unavailable because the `wordcloud` package is not installed. "
+            "Install the project requirements and rerun the app."
+        )
+    else:
+        positive_cloud_col, negative_cloud_col = st.columns(2)
+        with positive_cloud_col:
+            st.markdown("#### Positive review word cloud")
+            positive_cloud = make_wordcloud(
+                df.loc[df["Sentiment"] == "Positive", "_analysis_text"],
+                colormap="Greens",
+            )
+            if positive_cloud is not None:
+                st.image(positive_cloud, use_container_width=True)
+            else:
+                st.info("Not enough usable positive-review text to create a word cloud.")
+        with negative_cloud_col:
+            st.markdown("#### Negative review word cloud")
+            negative_cloud = make_wordcloud(
+                df.loc[df["Sentiment"] == "Negative", "_analysis_text"],
+                colormap="Reds",
+            )
+            if negative_cloud is not None:
+                st.image(negative_cloud, use_container_width=True)
+            else:
+                st.info("Not enough usable negative-review text to create a word cloud.")
 
     st.subheader("Exploratory Review Topics")
     topic_summary = (
