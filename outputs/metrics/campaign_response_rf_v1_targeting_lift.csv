@@ -1,0 +1,5 @@
+Target Group,Customers Selected,Actual Responders in Group,Observed Response Rate (%),Share of All Test Responders Captured (%),Lift vs Overall Response Rate
+Top 10% by predicted probability,76,68,89.47368421052632,22.006472491909385,2.2064384261624936
+Top 20% by predicted probability,152,115,75.6578947368421,37.2168284789644,1.8657383750638732
+Top 30% by predicted probability,228,154,67.54385964912281,49.83818770226537,1.6656446942599217
+Top 50% by predicted probability,381,220,57.74278215223097,71.19741100323624,1.423948220064725

@@ -1,0 +1,6 @@
+Model,TestAUC
+Random Forest,0.7589
+XGBoost,0.7173
+SVM,0.6709
+Logistic Regression,0.6443
+Naive Bayes,0.6406

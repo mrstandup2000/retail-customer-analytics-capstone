@@ -1,0 +1,34 @@
+{
+  "model": "Random Forest",
+  "model_version": "campaign_response_rf_v1",
+  "random_state": 42,
+  "n_estimators": 100,
+  "feature_columns": [
+    "TotalSales",
+    "UniqueProducts",
+    "InvoiceCount",
+    "nps",
+    "n_comp",
+    "n_communications",
+    "loyalty"
+  ],
+  "modeling_rows": 3809,
+  "train_rows": 3047,
+  "test_rows": 762,
+  "train_test_split": 0.2,
+  "test_auc": 0.7589211084678198,
+  "test_accuracy": 0.6955380577427821,
+  "test_sensitivity": 0.49838187702265374,
+  "test_specificity": 0.8300220750551877,
+  "test_balanced_accuracy": 0.6642019760389207,
+  "test_confusion_matrix": [
+    [
+      376,
+      77
+    ],
+    [
+      155,
+      154
+    ]
+  ]
+}

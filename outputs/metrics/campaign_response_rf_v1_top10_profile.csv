@@ -1,0 +1,8 @@
+Characteristic,Statistic,TopScoringValue,RemainingValue,Difference,DifferenceUnit
+Median total sales,median,473.6,677.025,-203.42499999999995,feature units
+Median unique products purchased,median,27.0,36.0,-9.0,feature units
+Median invoice count,median,2.0,2.0,0.0,feature units
+Mean NPS,mean,7.855263157894737,4.24198250728863,3.6132806506061073,feature units
+Mean previous complaints,mean,2.3157894736842106,2.5597667638483963,-0.24397729016418568,feature units
+Mean previous communications,mean,5.7631578947368425,5.243440233236152,0.5197176615006907,feature units
+Loyalty membership rate (%),percentage rate,68.42105263157895,51.60349854227405,16.817554089304892,percentage points
