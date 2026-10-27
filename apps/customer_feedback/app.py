@@ -1,8 +1,6 @@
 #Explore customer feedback classified during Phase 5 using a pretrained RoBERTa sentiment model. Examine positive, neutral and negative sentiment patterns, compare recurring keywords and word clouds, and inspect individual reviews that may need human attention.
 #This interactive dashboard helps explore the voice of the customer and identify topics for further investigation. It visualises existing sentiment classifications; it does not run sentiment classification on newly uploaded raw reviews.
 
-This interactive dashboard helps explore the voice of the customer and identify topics for further investigation. It visualises existing sentiment classifications; it does not run sentiment classification on newly uploaded raw reviews.
-
 from pathlib import Path
 import re
 
